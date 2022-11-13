@@ -29,10 +29,10 @@ defmodule StfWeb.PassController do
       {:ok, result} ->
         case result do
           {:ok, body} ->
-            Logger.info "Successfully created the pass image for #{params["msisdn"]}"
-            file = File.read!("#{Application.get_env(:stf, :location)}/#{params["msisdn"]}.png")
+            Logger.info "Successfully created the pass image for #{body.msisdn}"
+            file = File.read!("#{Application.get_env(:stf, :location)}/#{body.msisdn}.png")
               |> Base.encode64()
-              |> send_image_to_whatsapp(params)
+              |> send_image_to_whatsapp(body)
             {:ok, body}
           {:error, reason} ->
             Logger.error reason
@@ -42,7 +42,7 @@ defmodule StfWeb.PassController do
         Logger.error reason
         {:error, reason}
       nil ->
-        message = "Failed to create the pass image for #{params["msisdn"]}"
+        message = "Failed to create the pass image for #{params["billing"]["phone"]}"
         Logger.error message
         {:error, message}
     end
@@ -58,11 +58,11 @@ defmodule StfWeb.PassController do
       "messages": [
         %{
           "channel": "whatsapp",
-          "to": params["msisdn"],
+          "to": params.msisdn,
           "content": file,
           "media": %{
             "contentType": "image/png",
-            "caption": "Hi #{params["name"]}, here is your trail pass. Proudly delivered by Clickatell."
+            "caption": "Hi #{params.name}, here is your trail pass. Proudly delivered by Clickatell."
           }
         }
       ]
@@ -71,9 +71,9 @@ defmodule StfWeb.PassController do
     response = HTTPoison.post url, payload, headers
     case response do
       {:ok, response} ->
-        Logger.info "Successfully sent the pass for #{params["msisdn"]}"
-        with :ok <= File.rm("#{Application.get_env(:stf, :location)}/#{params["msisdn"]}.png") do
-          Logger.info "Successfully deleted the pass for #{params["msisdn"]}"
+        Logger.info "Successfully sent the pass for #{params.msisdn}"
+        with :ok <= File.rm("#{Application.get_env(:stf, :location)}/#{params.msisdn}.png") do
+          Logger.info "Successfully deleted the pass for #{params.msisdn}"
           :ok
         end
       {:error, response} ->
