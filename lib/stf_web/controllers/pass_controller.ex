@@ -72,10 +72,10 @@ defmodule StfWeb.PassController do
     case response do
       {:ok, response} ->
         Logger.info "Successfully sent the pass for #{params.msisdn}"
-        with :ok <= File.rm("#{Application.get_env(:stf, :location)}/#{params.msisdn}.png") do
-          Logger.info "Successfully deleted the pass for #{params.msisdn}"
-          :ok
-        end
+        # with :ok <= File.rm("#{Application.get_env(:stf, :location)}/#{params.msisdn}.png") do
+        #   Logger.info "Successfully deleted the pass for #{params.msisdn}"
+        #   :ok
+        # end
       {:error, response} ->
         Logger.error response.reason
         :error
