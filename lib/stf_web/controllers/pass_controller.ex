@@ -28,12 +28,14 @@ defmodule StfWeb.PassController do
     case Task.yield(task, @timeout) || Task.shutdown(task) do
       {:ok, result} ->
         case result do
-          {:ok, body} ->
-            Logger.info "Successfully created the pass image for #{body.msisdn}"
-            file = File.read!("#{Application.get_env(:stf, :location)}/#{body.msisdn}.png")
+          {:ok, list} ->
+            Enum.each(list, fn body ->
+              Logger.info "Successfully created the pass image for #{body.sku}"
+              File.read!("#{Application.get_env(:stf, :location)}/#{body.sku}.png")
               |> Base.encode64()
               |> send_image_to_whatsapp(body)
-            {:ok, body}
+            end)
+            {:ok, list}
           {:error, reason} ->
             Logger.error reason
             {:error, "An error has occurred"}

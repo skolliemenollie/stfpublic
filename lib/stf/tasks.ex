@@ -5,32 +5,44 @@ defmodule Stf.Tasks do
   require Logger
 
   def generate_pass(data) do
-    blob = data["line_items"] |> List.first |> Map.get("meta_data")
-    reduced = Enum.into(blob, [], fn k ->
-      case Map.get(k, "display_key") do
-        "Trail Pass" -> k
-        "Riding Date" -> k
-        "Riders Details" -> k
-        _ -> nil
-      end
+    list = data["_json"]
+    passes = Enum.into(list, [], fn pass ->
+      trail = pass["trailPark"]
+      name = pass["billing"]["first_name"] <> " " <> pass["billing"]["last_name"]
+      date = pass["ridingDate"]
+      msisdn = pass["billing"]["phone"] |> String.replace_leading("0", "27")
+      sku = pass["uniqueSKU"]
+      %{trail: trail, name: name, date: date, msisdn: msisdn, sku: sku}
     end)
-    |> Enum.filter(& !is_nil(&1))
-    trail = reduced |> Enum.fetch!(0) |> Map.get("display_value")
-    date = reduced |> Enum.fetch!(1) |> Map.get("display_value")
-    name = reduced |> Enum.fetch!(2) |> Map.get("display_value") |> String.split |> Enum.fetch!(2)
-    msisdn = reduced |> Enum.fetch!(2) |> Map.get("display_value") |> String.split |> Enum.fetch!(3) |> String.replace_leading("0", "27")
-    formatted = %{trail: trail, name: name, date: date, msisdn: msisdn}
+
     location = Application.get_env(:stf, :location)
     template = "#{location}/template.png"
-    System.cmd("convert", setup_pass(template, location, formatted))
-    with {:ok, _} <- File.read("#{location}/#{formatted.msisdn}.png") do
-      {:ok, formatted}
-    end
+
+    generated_list = Enum.into(passes, [], fn pass ->
+      System.cmd("convert", setup_pass(template, location, pass))
+      with {:ok, _} <- File.read("#{location}/#{pass.sku}.png") do
+        pass
+      end
+    end)
+
+    {:ok, generated_list}
   end
 
   defp setup_pass(template, location, data) do
     [
       "#{template}",
+      #sku
+      "-font",
+      "#{location}/Calibri.otf",
+      "-pointsize",
+      "22",
+      "-fill",
+      "black",
+      "-gravity",
+      "center",
+      "-annotate",
+      "-0-0",
+      "#{data.sku}",
       #name
       "-font",
       "#{location}/Calibri.otf",
@@ -67,7 +79,7 @@ defmodule Stf.Tasks do
       "-annotate",
       "-0+110",
       "#{data.trail}",
-      "#{location}/#{data.msisdn}.png"
+      "#{location}/#{data.sku}.png"
     ]
   end
 
